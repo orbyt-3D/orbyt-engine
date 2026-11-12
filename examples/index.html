@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>orbyt — server hall example</title>
+<style>
+  :root { color-scheme: dark; --teal: #2dd4bf; --magenta: #e879f9; --indigo: #818cf8; --bg: #060b10; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: #dce9ea; font: 14px/1.4 system-ui, sans-serif; }
+  canvas { display: block; width: 100%; height: 100%; }
+  .hud { position: fixed; left: 16px; bottom: 16px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .hud strong { font-weight: 650; letter-spacing: -.02em; margin-right: 6px; }
+  button { font: inherit; color: var(--bg); background: var(--teal); border: 0; border-radius: 999px; padding: 7px 14px; cursor: pointer; }
+  button.alt { background: rgba(255,255,255,.1); color: #dce9ea; }
+  #status { color: #8ea3a6; }
+  #baked { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; display: none; }
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "orbyt": "/dist/index.js",
+    "orbyt/addons/gltf": "/dist/addons/gltf.js",
+    "orbyt/addons/hdri": "/dist/addons/hdri.js",
+    "three": "/node_modules/three/build/three.module.js",
+    "three/addons/": "/node_modules/three/examples/jsm/",
+    "three/examples/jsm/": "/node_modules/three/examples/jsm/",
+    "three-gpu-pathtracer": "/node_modules/three-gpu-pathtracer/src/index.js",
+    "three-mesh-bvh": "/node_modules/three-mesh-bvh/src/index.js"
+  }
+}
+</script>
+</head>
+<body>
+<canvas id="c"></canvas>
+<img id="baked" alt="Path-traced server hall">
+<div class="hud">
+  <strong>orbyt</strong>
+  <button id="orbit" class="alt">Pause orbit</button>
+  <button id="bake">Bake 64 spp</button>
+  <span id="status">loading…</span>
+</div>
+<script type="module">
+// --- the exact snippet from orbyt3d.space ---------------------------------
+import { Flare, Bake } from 'orbyt';
+import { loadGltf } from 'orbyt/addons/gltf';
+import { loadHdri } from 'orbyt/addons/hdri';
+
+const canvas = document.getElementById('c');
+const { parts } = await loadGltf('/server-hall.glb');
+const map = await loadHdri('/dusk.hdr');
+const renderer = new Flare(canvas, parts, {
+  hdr: true,
+  ground: false,
+  environment: { map },
+});
+
+renderer.render({ eye: [42, 28, 60], target: [0, 2, -6] });
+// ---------------------------------------------------------------------------
+
+const status = document.getElementById('status');
+status.textContent = `${parts.length} parts`;
+window.flare = renderer; // for poking around in devtools
+
+let orbiting = true, angle = Math.atan2(60, 42);
+const radius = Math.hypot(42, 60);
+addEventListener('resize', () => { renderer.resize(); if (!orbiting) renderer.render(); });
+document.getElementById('orbit').onclick = (e) => {
+  orbiting = !orbiting;
+  e.target.textContent = orbiting ? 'Pause orbit' : 'Resume orbit';
+};
+let last = performance.now();
+renderer.renderer.setAnimationLoop((now) => {
+  const dt = (now - last) / 1000; last = now;
+  if (!orbiting) return;
+  angle += dt * 0.08;
+  renderer.render({ eye: [Math.cos(angle) * radius, 28, Math.sin(angle) * radius - 6], target: [0, 2, -6] });
+});
+
+// Bake: a path-traced still of the current view (same parts, cloned)
+document.getElementById('bake').onclick = async () => {
+  orbiting = false;
+  document.getElementById('orbit').textContent = 'Resume orbit';
+  const off = document.createElement('canvas');
+  off.width = Math.min(960, innerWidth); off.height = Math.round(off.width * innerHeight / innerWidth);
+  const bakeParts = parts.map((p) => ({ name: p.name, object: p.object.clone(true) }));
+  const bake = new Bake(off, bakeParts, { ground: false, environment: { map } });
+  const eye = renderer.camera.position.toArray();
+  status.textContent = 'baking (first run compiles shaders)…';
+  const img = await bake.render({ eye, target: [0, 2, -6], samples: 64, onProgress: (d, t) => (status.textContent = `baking ${d}/${t}`) });
+  const el = document.getElementById('baked');
+  el.src = img.toDataURL(); el.style.display = 'block';
+  status.textContent = `baked ${img.samples} spp in ${(img.ms / 1000).toFixed(1)} s — click image to return`;
+  el.onclick = () => { el.style.display = 'none'; status.textContent = `${parts.length} parts`; };
+  bake.dispose();
+};
+</script>
+</body>
+</html>

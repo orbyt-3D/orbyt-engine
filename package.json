@@ -1,0 +1,92 @@
+{
+  "name": "@orbythq/orbyt",
+  "version": "0.9.2",
+  "description": "3D engine that AI agents drive: real-time WebGL2 (Flare), offline path tracing (Bake) and an MCP server.",
+  "keywords": [
+    "3d",
+    "webgl",
+    "webgl2",
+    "three",
+    "renderer",
+    "path-tracing",
+    "pbr",
+    "mcp",
+    "model-context-protocol",
+    "ai-agents",
+    "gltf",
+    "hdri"
+  ],
+  "homepage": "https://www.orbyt3d.space",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/orbyt-3D/orbyt-engine.git"
+  },
+  "bugs": {
+    "url": "https://github.com/orbyt-3D/orbyt-engine/issues"
+  },
+  "license": "MIT",
+  "author": "Lumora Labs",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./addons/gltf": {
+      "types": "./dist/addons/gltf.d.ts",
+      "import": "./dist/addons/gltf.js"
+    },
+    "./addons/hdri": {
+      "types": "./dist/addons/hdri.d.ts",
+      "import": "./dist/addons/hdri.js"
+    },
+    "./mcp": {
+      "types": "./dist/mcp/index.d.ts",
+      "import": "./dist/mcp/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "orbyt-mcp": "dist/mcp/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18.17"
+  },
+  "scripts": {
+    "build": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && tsup",
+    "typecheck": "tsc --noEmit",
+    "pretest": "npm run build",
+    "test": "vitest run",
+    "example": "node scripts/serve-examples.mjs",
+    "assets": "node scripts/make-assets.mjs",
+    "size": "node scripts/size.mjs",
+    "prepublishOnly": "npm run typecheck && npm test"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "@types/three": "^0.187.0",
+    "playwright-core": "^1.65.0",
+    "three": "^0.187.0",
+    "three-gpu-pathtracer": "^0.0.28",
+    "three-mesh-bvh": "^0.9.18",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "tsup": "^9.0.0",
+    "typescript": "^5.9.3",
+    "vitest": "^5.1.0"
+  }
+}
